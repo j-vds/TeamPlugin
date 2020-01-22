@@ -52,7 +52,7 @@ public class TeamPlugin extends Plugin{
             if (timers.get(player) > current - 60000L) {
                 player.setTeam(getPosTeam(player));
                 Call.onPlayerDeath(player);
-                Call.sendMessage(player.name + " [sky] changed teams.");
+                Call.sendMessage(player.name + "[sky] changed teams.");
             } else {
                 player.sendMessage("[scarlet] you can't change teams anymore");
             }
