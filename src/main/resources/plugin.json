@@ -1,0 +1,7 @@
+{
+  "name": "TeamPlugin",
+  "author": "Fishbuilder",
+  "main": "team.TeamPlugin",
+  "description": "A plugin that lets a player change teams.",
+  "version": 1.0
+}
