@@ -51,6 +51,7 @@ public class TeamPlugin extends Plugin{
             // change teams
             if (timers.get(player) > current - 60000L) {
                 player.setTeam(getPosTeam(player));
+                player.spawner = player.lastSpawner = null;
                 Call.onPlayerDeath(player);
                 Call.sendMessage(player.name + "[sky] changed teams.");
             } else {
