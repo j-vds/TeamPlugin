@@ -15,8 +15,13 @@ import java.util.HashMap;
 
 
 public class TeamPlugin extends Plugin{
+    //respawn glitch
+    private final Long spawntime = 5000L;
+    private HashMap<Player, Long> teamSpawn = new HashMap<>();
+
     private HashMap<Player, Long> timers = new HashMap<>();
     private HashMap<String, Team> teamMap = new HashMap<>();
+
     private Team forceTeam = null;
 
     //register event handlers and create variables in the constructor
@@ -24,6 +29,7 @@ public class TeamPlugin extends Plugin{
         for(Team t: Team.base()){
             teamMap.put(t.toString(), t);
         }
+        teamMap.put("off", null);
 
         Events.on(PlayerJoin.class, event -> {
             if (Vars.state.rules.pvp) {
@@ -47,6 +53,7 @@ public class TeamPlugin extends Plugin{
                 Call.sendMessage("[accent]All players are allowed to change teams.");
             }
             if(Vars.state.rules.pvp){
+
                 Call.sendMessage("You have 1 minute if you want to change teams.");
                 for(Player p: timers.keySet()){
                     timers.put(p, System.currentTimeMillis());
@@ -58,6 +65,9 @@ public class TeamPlugin extends Plugin{
             //maybe this could cause an error
             if(timers.containsKey(event.player)){
                 timers.remove(event.player);
+            }
+            if(teamSpawn.containsKey(event.player)){
+                teamSpawn.remove(event.player);
             }
         });
     }
@@ -76,21 +86,28 @@ public class TeamPlugin extends Plugin{
     public void registerClientCommands(CommandHandler handler){
         //change teams
         handler.<Player>register("team", "You have max 1 minute to change teams after joining.", (args, player) -> {
-            if(!Vars.state.rules.pvp) return;
+            if (!Vars.state.rules.pvp) return;
             long current = System.currentTimeMillis();
             // change teams
-            if (timers.get(player) > current - 60000L) {
+            if(teamSpawn.containsKey(player)) {
+                if (teamSpawn.get(player) > current - spawntime) {
+                    player.sendMessage("[accent]/team[] [scarlet]is on a 5 second cooldown.");
+                    return;
+                }
+            }
+            if(timers.get(player) > current - 60000L || player.isAdmin) {
                 player.setTeam(getPosTeam(player));
                 player.spawner = player.lastSpawner = null;
                 Call.onPlayerDeath(player);
                 Call.sendMessage(player.name + "[sky] changed teams.");
-            } else {
+                teamSpawn.put(player, current);
+            }else{
                 player.sendMessage("[scarlet] you can't change teams anymore");
             }
         });
 
 
-        handler.<Player>register("forceTeam", "<team>", "[scarlet]Admin only[] force new players to join <team>", (args, player) -> {
+        handler.<Player>register("forceteam", "<team>", "[scarlet]Admin only[] force new players to join <team>. 'off' to disable", (args, player) -> {
            if(!Vars.state.rules.pvp) return;
            if(!player.isAdmin){
                player.sendMessage("[scarlet]This command is only for admins!");
@@ -103,7 +120,11 @@ public class TeamPlugin extends Plugin{
             }
 
            this.forceTeam = teamMap.get(args[0]);
-           Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
+           if(this.forceTeam != null) {
+               Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
+           }else{
+               Call.sendMessage("All [accent]new players[] will join [sky]a random[] team.");
+           }
         });
 
     }
