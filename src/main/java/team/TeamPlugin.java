@@ -16,19 +16,49 @@ import java.util.HashMap;
 
 public class TeamPlugin extends Plugin{
     private HashMap<Player, Long> timers = new HashMap<>();
+    private HashMap<String, Team> teamMap = new HashMap<>();
+    private Team forceTeam = null;
 
     //register event handlers and create variables in the constructor
     public TeamPlugin(){
+        for(Team t: Team.base()){
+            teamMap.put(t.toString(), t);
+        }
+
         Events.on(PlayerJoin.class, event -> {
-            if (Vars.state.rules.pvp){
-                event.player.sendMessage("You have 1 minute if you want to change teams.");
+            if (Vars.state.rules.pvp) {
                 timers.put(event.player, System.currentTimeMillis());
+                if(forceTeam == null){
+                    event.player.sendMessage("You have 1 minute if you want to change teams.");
+                }else{
+                    event.player.setTeam(forceTeam);
+                    event.player.spawner = event.player.lastSpawner = null;
+                    Call.onPlayerDeath(event.player);
+                    //Call.sendMessage(event.player.name + "[sky] changed teams.");
+                }
+            }
+
+
+        });
+
+        Events.on(GameOverEvent.class, event -> {
+            if(this.forceTeam != null){
+                this.forceTeam = null;
+                Call.sendMessage("[accent]All players are allowed to change teams.");
+            }
+            if(Vars.state.rules.pvp){
+                Call.sendMessage("You have 1 minute if you want to change teams.");
+                for(Player p: timers.keySet()){
+                    timers.put(p, System.currentTimeMillis());
+                }
             }
         });
 
         Events.on(PlayerLeave.class, event -> {
             //maybe this could cause an error
-           timers.remove(event.player);
+            if(timers.containsKey(event.player)){
+                timers.remove(event.player);
+            }
         });
     }
 
@@ -46,7 +76,7 @@ public class TeamPlugin extends Plugin{
     public void registerClientCommands(CommandHandler handler){
         //change teams
         handler.<Player>register("team", "You have max 1 minute to change teams after joining.", (args, player) -> {
-            if (!Vars.state.rules.pvp) return;
+            if(!Vars.state.rules.pvp) return;
             long current = System.currentTimeMillis();
             // change teams
             if (timers.get(player) > current - 60000L) {
@@ -57,6 +87,23 @@ public class TeamPlugin extends Plugin{
             } else {
                 player.sendMessage("[scarlet] you can't change teams anymore");
             }
+        });
+
+
+        handler.<Player>register("forceTeam", "<team>", "[scarlet]Admin only[] force new players to join <team>", (args, player) -> {
+           if(!Vars.state.rules.pvp) return;
+           if(!player.isAdmin){
+               player.sendMessage("[scarlet]This command is only for admins!");
+               return;
+           }
+           System.out.println(args[0]);
+           if(!teamMap.containsKey(args[0])){
+               player.sendMessage("[scarlet]Invalid team!");
+               return;
+            }
+
+           this.forceTeam = teamMap.get(args[0]);
+           Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
         });
 
     }
