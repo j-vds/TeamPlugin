@@ -15,10 +15,6 @@ import java.util.HashMap;
 
 
 public class TeamPlugin extends Plugin{
-    //respawn glitch
-    private final Long spawntime = 5000L;
-    private HashMap<Player, Long> teamSpawn = new HashMap<>();
-
     private HashMap<Player, Long> timers = new HashMap<>();
     private HashMap<String, Team> teamMap = new HashMap<>();
 
@@ -66,9 +62,6 @@ public class TeamPlugin extends Plugin{
             if(timers.containsKey(event.player)){
                 timers.remove(event.player);
             }
-            if(teamSpawn.containsKey(event.player)){
-                teamSpawn.remove(event.player);
-            }
         });
     }
 
@@ -89,18 +82,17 @@ public class TeamPlugin extends Plugin{
             if (!Vars.state.rules.pvp) return;
             long current = System.currentTimeMillis();
             // change teams
-            if(teamSpawn.containsKey(player)) {
-                if (teamSpawn.get(player) > current - spawntime) {
-                    player.sendMessage("[accent]/team[] [scarlet]is on a 5 second cooldown.");
-                    return;
-                }
+            if(player.dead) {
+                player.sendMessage("");
+                player.sendMessage("[scarlet]You need to be [accent]alive[] to change team!");
+                return;
             }
+
             if(timers.get(player) > current - 60000L || player.isAdmin) {
                 player.setTeam(getPosTeam(player));
                 player.spawner = player.lastSpawner = null;
                 Call.onPlayerDeath(player);
                 Call.sendMessage(player.name + "[sky] changed teams.");
-                teamSpawn.put(player, current);
             }else{
                 player.sendMessage("[scarlet] you can't change teams anymore");
             }
