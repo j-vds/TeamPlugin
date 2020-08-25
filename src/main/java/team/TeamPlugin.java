@@ -85,6 +85,7 @@ public class TeamPlugin extends Plugin{
             }
             if(player.getTeam() == spectateTeam){
                 player.setTeam(rememberSpectate.get(player));
+                rememberSpectate.remove(player);
                 player.dead = false;
                 player.sendMessage("[gold]PLAYER MODE[]");
             }else{
@@ -100,8 +101,11 @@ public class TeamPlugin extends Plugin{
             if (!Vars.state.rules.pvp) return;
             long current = System.currentTimeMillis();
             // change teams
-            if(player.dead && Vars.playerGroup.count(p -> p.getTeam() == player.getTeam()) != Vars.playerGroup.size() && player.getTeam().cores().size > 0){
+            if(player.dead && Vars.playerGroup.count(p -> p.getTeam() == player.getTeam()) != Vars.playerGroup.size() && player.getTeam().cores().size > 0 ){
                 player.sendMessage("\n[scarlet]You need to be [accent]alive[] to change teams!");
+                return;
+            }else if(rememberSpectate.containsKey(player)){
+                player.sendMessage("\nFirs use [accent]/spectate[] to leave spectate mode...");
                 return;
             }
 
