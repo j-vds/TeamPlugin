@@ -96,16 +96,16 @@ public class TeamPlugin extends Plugin{
         });
 
         //change teams
-        handler.<Player>register("team", "[optional:Team]", "You have max 1 minute to change teams after joining.", (args, player) -> {
+        handler.<Player>register("team", "[optional:Team]", "You have max 3 minute to change teams after joining.", (args, player) -> {
             if (!Vars.state.rules.pvp) return;
             long current = System.currentTimeMillis();
             // change teams
-            if(player.dead && Vars.playerGroup.count(p -> p.getTeam() == player.getTeam()) != Vars.playerGroup.size()){
+            if(player.dead && Vars.playerGroup.count(p -> p.getTeam() == player.getTeam()) != Vars.playerGroup.size() && player.getTeam().cores().size > 0){
                 player.sendMessage("\n[scarlet]You need to be [accent]alive[] to change teams!");
                 return;
             }
 
-            if(timers.get(player) > current - 180000L || player.isAdmin) {
+            if(timers.get(player) > current - 180000L || player.isAdmin || player.getTeam().cores().size == 0) {
                 if(args.length == 0){
                     player.setTeam(getPosTeam(player));
                 }else{
