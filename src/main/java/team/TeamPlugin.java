@@ -34,7 +34,7 @@ public class TeamPlugin extends Plugin{
             if (Vars.state.rules.pvp) {
                 timers.put(event.player, System.currentTimeMillis());
                 if(forceTeam == null){
-                    event.player.sendMessage("You have 1 minute if you want to change teams.");
+                    event.player.sendMessage("You have 3 minutes if you want to change teams.");
                 }else{
                     event.player.setTeam(forceTeam);
                     event.player.spawner = event.player.lastSpawner = null;
@@ -105,7 +105,7 @@ public class TeamPlugin extends Plugin{
                 return;
             }
 
-            if(timers.get(player) > current - 60000L || player.isAdmin) {
+            if(timers.get(player) > current - 180000L || player.isAdmin) {
                 if(args.length == 0){
                     player.setTeam(getPosTeam(player));
                 }else{

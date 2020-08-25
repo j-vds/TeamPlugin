@@ -3,5 +3,5 @@
   "author": "Fishbuilder",
   "main": "team.TeamPlugin",
   "description": "A plugin that lets a player change teams.",
-  "version": 1.3
+  "version": 1.4
 }
