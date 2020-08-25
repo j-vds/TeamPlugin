@@ -130,7 +130,7 @@ public class TeamPlugin extends Plugin{
                         if(teamMap.get(args[0]).cores().size > 0) {
                             player.setTeam(teamMap.get(args[0]));
                         }else{
-                            player.sendMessage("This team has no cores!");
+                            player.sendMessage("[scarlet]This team has no cores!");
                             return;
                         }
                     }
@@ -150,15 +150,18 @@ public class TeamPlugin extends Plugin{
                player.sendMessage("[scarlet]This command is only for admins!");
                return;
            }
-           if(!teamMap.containsKey(args[0])){
+           if(!teamMap.containsKey(args[0])) {
                player.sendMessage("[scarlet]Invalid team!");
                return;
+           }else if(args[0].equals("off")){
+               Log.info("forceTeam: off");
            }else if(teamMap.get(args[0]).cores().size < 1){
-               player.sendMessage("[scarlet]This team has no []cores!");
+               player.sendMessage("[scarlet]This team has no cores!");
                return;
            }
            this.forceTeam = teamMap.get(args[0]);
            if(this.forceTeam != null) {
+               Log.info("forceTeam: " + args[0]);
                Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
            }else{
                Call.sendMessage("All [accent]new players[] will join [sky]a random[] team.");
