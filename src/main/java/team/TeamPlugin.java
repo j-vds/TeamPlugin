@@ -105,7 +105,7 @@ public class TeamPlugin extends Plugin{
                 player.sendMessage("\n[scarlet]You need to be [accent]alive[] to change teams!");
                 return;
             }else if(rememberSpectate.containsKey(player)){
-                player.sendMessage("\nFirs use [accent]/spectate[] to leave spectate mode...");
+                player.sendMessage("\nFirst use [accent]/spectate[] to leave spectate mode...");
                 return;
             }
 
