@@ -1,6 +1,7 @@
 package team;
 
 import arc.*;
+import arc.struct.ObjectMap;
 import arc.util.*;
 import mindustry.*;
 import mindustry.entities.type.*;
@@ -19,6 +20,8 @@ public class TeamPlugin extends Plugin{
     private HashMap<String, Team> teamMap = new HashMap<>();
 
     private Team forceTeam = null;
+    private Team spectateTeam = Team.all()[6];
+    private ObjectMap<Player, Team> rememberSpectate = new ObjectMap<>();
 
     //register event handlers and create variables in the constructor
     public TeamPlugin(){
@@ -62,6 +65,10 @@ public class TeamPlugin extends Plugin{
             if(timers.containsKey(event.player)){
                 timers.remove(event.player);
             }
+
+            if(rememberSpectate.containsKey(event.player)){
+                rememberSpectate.remove(event.player);
+            }
         });
     }
 
@@ -77,7 +84,22 @@ public class TeamPlugin extends Plugin{
     //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
-        //change teams
+        handler.<Player>register("spectate", "[scarlet]Admin only[]", (args, player) -> {
+            if(!player.isAdmin){
+                player.sendMessage("[scarlet]This command is only for admins!");
+                return;
+            }
+            if(player.getTeam() == spectateTeam){
+                player.setTeam(rememberSpectate.get(player));
+                player.dead = false;
+            }else{
+                rememberSpectate.put(player, player.getTeam());
+                player.setTeam(spectateTeam);
+                player.dead = true;
+                player.sendMessage("SPECTATE MODE");
+            }
+        });
+                    //change teams
         handler.<Player>register("team", "You have max 1 minute to change teams after joining.", (args, player) -> {
             if (!Vars.state.rules.pvp) return;
             long current = System.currentTimeMillis();
