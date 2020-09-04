@@ -1,6 +1,7 @@
 package team;
 
 import arc.*;
+import arc.struct.ObjectIntMap;
 import arc.struct.ObjectMap;
 import arc.util.*;
 import mindustry.*;
@@ -108,8 +109,10 @@ public class TeamPlugin extends Plugin{
                 player.sendMessage("\nFirst use [accent]/spectate[] to leave spectate mode...");
                 return;
             }
-
-            if(timers.get(player) > current - 180000L || player.isAdmin || player.getTeam().cores().size == 0) {
+            if(player.getTeam().cores().size == 0){
+                timers.put(player, System.currentTimeMillis());
+            }
+            if(timers.get(player) > current - 180000L || player.isAdmin) {
                 if(args.length == 0){
                     player.setTeam(getPosTeam(player));
                 }else{
@@ -143,32 +146,43 @@ public class TeamPlugin extends Plugin{
             }
         });
 
+        handler.<Player>register("forceteam", "<team> [change:1]", "[scarlet]Admin only[] force new players to join <team>. 'off' to disable", (args, player) -> {
+            if(!Vars.state.rules.pvp) return;
+            if(!player.isAdmin){
+                player.sendMessage("[scarlet]This command is only for admins!");
+                return;
+            }
+            if(!teamMap.containsKey(args[0])) {
+                player.sendMessage("[scarlet]Invalid team!");
+                return;
+            }else if(args[0].equals("off")){
+                Log.info("forceTeam: off");
+            }else if(teamMap.get(args[0]).cores().size < 1){
+                player.sendMessage("[scarlet]This team has no cores!");
+                return;
+            }
+            this.forceTeam = teamMap.get(args[0]);
+            if(this.forceTeam != null) {
+                Log.info("forceTeam: " + args[0]);
+                Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
+            }else{
+                Call.sendMessage("All [accent]new players[] will join [sky]a random[] team.");
+            }
 
-        handler.<Player>register("forceteam", "<team>", "[scarlet]Admin only[] force new players to join <team>. 'off' to disable", (args, player) -> {
-           if(!Vars.state.rules.pvp) return;
-           if(!player.isAdmin){
-               player.sendMessage("[scarlet]This command is only for admins!");
-               return;
-           }
-           if(!teamMap.containsKey(args[0])) {
-               player.sendMessage("[scarlet]Invalid team!");
-               return;
-           }else if(args[0].equals("off")){
-               Log.info("forceTeam: off");
-           }else if(teamMap.get(args[0]).cores().size < 1){
-               player.sendMessage("[scarlet]This team has no cores!");
-               return;
-           }
-           this.forceTeam = teamMap.get(args[0]);
-           if(this.forceTeam != null) {
-               Log.info("forceTeam: " + args[0]);
-               Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
-           }else{
-               Call.sendMessage("All [accent]new players[] will join [sky]a random[] team.");
-           }
+            if(this.forceTeam != null && args.length > 1){
+                if(args[1].equals("1")){
+                    Call.sendMessage("All players will change team immediately...");
+                    for(Player p: Vars.playerGroup){
+                        if(p != player){
+                            p.setTeam(this.forceTeam);
+                            Call.onPlayerDeath(p);
+                        }
+                    }
+                }
+            }
         });
-
     }
+
 
     //search a possible team
     private Team getPosTeam(Player p){
