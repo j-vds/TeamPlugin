@@ -92,6 +92,7 @@ public class TeamPlugin extends Plugin{
             }else{
                 rememberSpectate.put(player, player.getTeam());
                 player.setTeam(spectateTeam);
+                player.spawner = player.lastSpawner = null;
                 player.dead = true;
                 player.sendMessage("[green]SPECTATE MODE[]");
             }
