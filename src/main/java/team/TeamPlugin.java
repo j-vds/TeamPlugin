@@ -1,16 +1,22 @@
 package team;
 
 import arc.*;
+import arc.math.geom.Position;
+import arc.scene.Group;
 import arc.struct.ObjectIntMap;
 import arc.struct.ObjectMap;
 import arc.util.*;
 import mindustry.*;
+import mindustry.core.World;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.mod.Plugin;
+import mindustry.world.Tile;
+import mindustry.world.blocks.storage.CoreBlock;
 
 // use java.util for now
+import java.text.MessageFormat;
 import java.util.Arrays;
 import java.util.HashMap;
 
@@ -25,6 +31,7 @@ public class TeamPlugin extends Plugin {
 
     //register event handlers and create variables in the constructor
     public TeamPlugin(){
+        /*
         for(Team t: Team.baseTeams){
             teamMap.put(t.toString(), t);
         }
@@ -70,6 +77,7 @@ public class TeamPlugin extends Plugin {
                 rememberSpectate.remove(event.player);
             }
         });
+        */
     }
 
     //register commands that run on the server
@@ -80,7 +88,37 @@ public class TeamPlugin extends Plugin {
     //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
+        handler.<Player>register("team", "change team", (args, player) ->{
+            Team newTeam = getPosTeam(player);
+            coreTeamReturn ret = getPosTeamLoc(player);
+            if(ret != null) {
+                Call.setPlayerTeamEditor(player, newTeam);
+                player.team(newTeam);
+                Call.setPosition(player.con, ret.x, ret.y);
+                player.set(ret.x, ret.y);
+            }
+        });
+
+        handler.<Player>register("loc", "change team", (args, player) -> {
+            StringBuilder sb = new StringBuilder();
+            sb.append(player.x).append(";").append(player.y);
+            player.sendMessage(sb.toString());
+        });
+
+        handler.<Player>register("setloc","<x> <y>", "setloc", (args, player) ->{
+            float x = Float.valueOf(args[0]) * 8;
+            float y = Float.valueOf(args[1]) * 8;
+            player.sendMessage(MessageFormat.format("{0};{1}", x, y));
+            player.set(x, y);
+
+            Call.setPosition(player.con(), x, y);
+        });
+
+
         handler.<Player>register("spectate", "[scarlet]Admin only[]", (args, player) -> {
+
+
+            /*
             if(!player.admin()){
                 player.sendMessage("[scarlet]This command is only for admins!");
                 return;
@@ -98,8 +136,9 @@ public class TeamPlugin extends Plugin {
                 //Call.onPlayerDeath(player);
                 player.sendMessage("[green]SPECTATE MODE[]");
             }
+            */
         });
-
+        /*
         //change teams
         handler.<Player>register("team", "[optional:Team]", "You have max 3 minute to change teams after joining.", (args, player) -> {
             if (!Vars.state.rules.pvp) return;
@@ -184,6 +223,8 @@ public class TeamPlugin extends Plugin {
                 }
             }
         });
+
+         */
     }
     //search a possible team
     private Team getPosTeam(Player p){
@@ -197,5 +238,26 @@ public class TeamPlugin extends Plugin {
             i = (i + 1) % Team.baseTeams.length;
         }
         return currentTeam;
+    }
+
+    private coreTeamReturn getPosTeamLoc(Player p){
+        Team currentTeam = p.team();
+        Team newTeam = getPosTeam(p);
+        if (newTeam == currentTeam){
+            return null;
+        }else{
+            Tile coreTile = newTeam.core().tileOn();
+            return new coreTeamReturn(newTeam, coreTile.getX(), coreTile.getY());
+        }
+    }
+
+    class coreTeamReturn{
+        Team t;
+        float x,y;
+        public coreTeamReturn(Team _t, float _x, float _y){
+            t = _t;
+            x = _x;
+            y = _y;
+        }
     }
 }
