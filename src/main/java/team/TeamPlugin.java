@@ -1,74 +1,37 @@
 package team;
 
 import arc.*;
-import arc.struct.ObjectIntMap;
 import arc.struct.ObjectMap;
 import arc.util.*;
-import mindustry.*;
-import mindustry.entities.type.*;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.plugin.Plugin;
+import mindustry.mod.Plugin;
+import mindustry.world.Tile;
 
 // use java.util for now
 import java.util.Arrays;
-import java.util.HashMap;
 
+public class TeamPlugin extends Plugin {
+    //private boolean DEBUG = false;
+    private long TEAM_CD = 5000L;
 
-public class TeamPlugin extends Plugin{
-    private ObjectMap<Player, Long> timers = new ObjectMap<>();
-    private ObjectMap<String, Team> teamMap = new ObjectMap<>();
+    private ObjectMap<Player, Long> teamTimers = new ObjectMap<>();
 
-    private Team forceTeam = null;
-    private Team spectateTeam = Team.all()[6];
+    private Team spectateTeam = Team.all[8];
     private ObjectMap<Player, Team> rememberSpectate = new ObjectMap<>();
 
     //register event handlers and create variables in the constructor
     public TeamPlugin(){
-        for(Team t: Team.base()){
-            teamMap.put(t.toString(), t);
-        }
-        teamMap.put("off", null);
-
-        Events.on(PlayerJoin.class, event -> {
-            if (Vars.state.rules.pvp) {
-                timers.put(event.player, System.currentTimeMillis());
-                if(forceTeam == null){
-                    event.player.sendMessage("You have 3 minutes if you want to change teams.");
-                }else{
-                    event.player.setTeam(forceTeam);
-                    event.player.spawner = event.player.lastSpawner = null;
-                    Call.onPlayerDeath(event.player);
-                    event.player.sendMessage("[sky]ForceTeam[] is activated");
-                    //Call.sendMessage(event.player.name + "[sky] changed teams.");
-                }
-            }
-        });
-
-        Events.on(GameOverEvent.class, event -> {
-            if(this.forceTeam != null){
-                this.forceTeam = null;
-                Call.sendMessage("[accent]All players are allowed to change teams.");
-            }
-            if(Vars.state.rules.pvp){
-                Call.sendMessage("You have 1 minute if you want to change teams.");
-                for(Player p: timers.keys()){
-                    timers.put(p, System.currentTimeMillis());
-                }
-            }
-        });
-
         Events.on(PlayerLeave.class, event -> {
-            //maybe this could cause an error
-            if(timers.containsKey(event.player)){
-                timers.remove(event.player);
-            }
-
             if(rememberSpectate.containsKey(event.player)){
                 rememberSpectate.remove(event.player);
             }
+            if(teamTimers.containsKey(event.player)){
+                teamTimers.remove(event.player);
+            }
         });
+
     }
 
     //register commands that run on the server
@@ -79,122 +42,85 @@ public class TeamPlugin extends Plugin{
     //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("spectate", "[scarlet]Admin only[]", (args, player) -> {
-            if(!player.isAdmin){
-                player.sendMessage("[scarlet]This command is only for admins!");
+        handler.<Player>register("team", "change team - cooldown", (args, player) ->{
+            if(rememberSpectate.containsKey(player)){
+                player.sendMessage(">[orange] transferring back to last team");
+                player.team(rememberSpectate.get(player));
+                Call.setPlayerTeamEditor(player, rememberSpectate.get(player));
+                rememberSpectate.remove(player);
                 return;
             }
-            if(player.getTeam() == spectateTeam){
-                player.setTeam(rememberSpectate.get(player));
+            if(System.currentTimeMillis() < teamTimers.get(player,0L)){
+                player.sendMessage(">[orange] command is on a 5 second cooldown...");
+                return;
+            }
+            coreTeamReturn ret = getPosTeamLoc(player);
+            if(ret != null) {
+                Call.setPlayerTeamEditor(player, ret.team);
+                player.team(ret.team);
+                //maybe not needed
+                Call.setPosition(player.con, ret.x, ret.y);
+                player.unit().set(ret.x, ret.y);
+                player.snapSync();
+                teamTimers.put(player, System.currentTimeMillis()+TEAM_CD);
+                Call.sendMessage(String.format("> %s []changed to team [sky]%s", player.name, ret.team));
+            }else{
+                player.sendMessage("[scarlet]You can't change teams ...");
+            }
+        });
+
+        handler.<Player>register("spectate", "[scarlet]Admin only[]", (args, player) -> {
+            if(!player.admin()){
+               player.sendMessage("[scarlet]This command is only for admins.");
+               return;
+            }
+            if(rememberSpectate.containsKey(player)){
+                player.team(rememberSpectate.get(player));
+                Call.setPlayerTeamEditor(player, rememberSpectate.get(player));
                 rememberSpectate.remove(player);
-                player.dead = false;
                 player.sendMessage("[gold]PLAYER MODE[]");
             }else{
-                rememberSpectate.put(player, player.getTeam());
-                player.setTeam(spectateTeam);
-                player.kill();
-                //player.spawner = player.lastSpawner = null;
-                //Call.onPlayerDeath(player);
+                rememberSpectate.put(player, player.unit().team);
+                player.team(spectateTeam);
+                Call.setPlayerTeamEditor(player, spectateTeam);
+                player.unit().kill();
                 player.sendMessage("[green]SPECTATE MODE[]");
-            }
-        });
-
-        //change teams
-        handler.<Player>register("team", "[optional:Team]", "You have max 3 minute to change teams after joining.", (args, player) -> {
-            if (!Vars.state.rules.pvp) return;
-            long current = System.currentTimeMillis();
-            // change teams
-            if(player.dead && Vars.playerGroup.count(p -> p.getTeam() == player.getTeam()) != Vars.playerGroup.size() && player.getTeam().cores().size > 0 ){
-                player.sendMessage("\n[scarlet]You need to be [accent]alive[] to change teams!");
-                return;
-            }else if(rememberSpectate.containsKey(player)){
-                player.sendMessage("\nFirst use [accent]/spectate[] to leave spectate mode...");
-                return;
-            }
-            if(player.getTeam().cores().size == 0){
-                timers.put(player, System.currentTimeMillis());
-            }
-            if(timers.get(player) > current - 180000L || player.isAdmin) {
-                if(args.length == 0){
-                    player.setTeam(getPosTeam(player));
-                }else{
-                    if(!teamMap.containsKey(args[0]) || args[0].equals("off")){
-                        player.sendMessage("[scarlet]Invalid team!");
-                        StringBuilder sb = new StringBuilder();
-                        sb.append("[accent]\nValid teams:[]");
-                        for(String name: teamMap.keys()){
-                            if(name.equals("off")) continue;
-                            if(teamMap.get(name).cores().size == 0){
-                                sb.append("[scarlet]");
-                            }
-                            sb.append("\n").append(name).append("[]");
-                        }
-                        player.sendMessage(sb.toString());
-                        return;
-                    }else{
-                        if(teamMap.get(args[0]).cores().size > 0) {
-                            player.setTeam(teamMap.get(args[0]));
-                        }else{
-                            player.sendMessage("[scarlet]This team has no cores!");
-                            return;
-                        }
-                    }
-                }
-                player.spawner = player.lastSpawner = null;
-                Call.onPlayerDeath(player);
-                Call.sendMessage(player.name + "[sky] changed teams.");
-            }else{
-                player.sendMessage("[scarlet] you can't change teams anymore");
-            }
-        });
-
-        handler.<Player>register("forceteam", "<team> [change:1]", "[scarlet]Admin only[] force new players to join <team>. 'off' to disable", (args, player) -> {
-            if(!Vars.state.rules.pvp) return;
-            if(!player.isAdmin){
-                player.sendMessage("[scarlet]This command is only for admins!");
-                return;
-            }
-            if(!teamMap.containsKey(args[0])) {
-                player.sendMessage("[scarlet]Invalid team!");
-                return;
-            }else if(args[0].equals("off")){
-                Log.info("forceTeam: off");
-            }else if(teamMap.get(args[0]).cores().size < 1){
-                player.sendMessage("[scarlet]This team has no cores!");
-                return;
-            }
-            this.forceTeam = teamMap.get(args[0]);
-            if(this.forceTeam != null) {
-                Log.info("forceTeam: " + args[0]);
-                Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
-            }else{
-                Call.sendMessage("All [accent]new players[] will join [sky]a random[] team.");
-            }
-
-            if(this.forceTeam != null && args.length > 1){
-                if(args[1].equals("1")){
-                    Call.sendMessage("All players will change team immediately...");
-                    for(Player p: Vars.playerGroup){
-                        if(p != player){
-                            p.setTeam(this.forceTeam);
-                            Call.onPlayerDeath(p);
-                        }
-                    }
-                }
+                player.sendMessage("use /team or /spectate to go back to player mode");
             }
         });
     }
     //search a possible team
     private Team getPosTeam(Player p){
-        Team currentTeam = p.getTeam();
-        int c_index = Arrays.asList(Team.base()).indexOf(currentTeam);
+        Team currentTeam = p.team();
+        int c_index = Arrays.asList(Team.baseTeams).indexOf(currentTeam);
         int i = (c_index+1)%6;
         while (i != c_index){
-            if (Team.base()[i].cores().size > 0){
-                return Team.base()[i];
+            if (Team.baseTeams[i].cores().size > 0){
+                return Team.baseTeams[i];
             }
-            i = (i + 1) % Team.base().length;
+            i = (i + 1) % Team.baseTeams.length;
         }
         return currentTeam;
+    }
+
+    private coreTeamReturn getPosTeamLoc(Player p){
+        Team currentTeam = p.team();
+        Team newTeam = getPosTeam(p);
+        if (newTeam == currentTeam){
+            return null;
+        }else{
+            Tile coreTile = newTeam.core().tileOn();
+            return new coreTeamReturn(newTeam, coreTile.drawx(), coreTile.drawy());
+        }
+    }
+
+    class coreTeamReturn{
+        Team team;
+        float x,y;
+        public coreTeamReturn(Team _t, float _x, float _y){
+            team = _t;
+            x = _x;
+            y = _y;
+        }
     }
 }
