@@ -1,9 +1,9 @@
 # TeamPlugin
 ### Commands
-* `/team [optional:team]` This command lets players change teams. But a player only has 3 minutes to change teams! *Important: a player needs to be alive to change teams.*
+* `/team ` This command lets players change teams. It cycles through a list of possible teams and teleports the players to on of their cores. *This command has a 5 second cooldown.*
 
 ### Admin Only commands
-* `/forceteam [team/off]` New players will be assigned to this team (resets after a game over)
+* ~~`/forceteam [team/off]` New players will be assigned to this team (resets after a game over)~~ It will be released if there is demand for it.
 * `/spectate` Enter/leave spectate mode.
 
 ### Important
@@ -12,6 +12,9 @@ This plugin isn't compatible with hexed!
 
 ### Feedback
 Open an issue if you have a suggestion.
+
+### Releases
+Prebuild relases can be found [here](https://github.com/J-VdS/TeamPlugin/releases)
 
 ### Building a Jar 
 
