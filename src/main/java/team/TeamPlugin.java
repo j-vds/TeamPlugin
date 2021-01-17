@@ -1,38 +1,29 @@
 package team;
 
 import arc.*;
-import arc.math.geom.Position;
-import arc.scene.Group;
-import arc.struct.ObjectIntMap;
 import arc.struct.ObjectMap;
 import arc.util.*;
 import mindustry.*;
-import mindustry.core.World;
-import mindustry.game.EventType;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
 import mindustry.mod.Plugin;
 import mindustry.world.Tile;
-import mindustry.world.blocks.storage.CoreBlock;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 
 // use java.util for now
 import java.text.MessageFormat;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import static mindustry.Vars.tilesize;
 
 
 public class TeamPlugin extends Plugin {
-    private boolean DEBUG = true;
+    //private boolean DEBUG = false;
+    private long TEAM_CD = 5L;
 
-    private ObjectMap<Player, Long> timers = new ObjectMap<>();
-    private ObjectMap<String, Team> teamMap = new ObjectMap<>();
+    private ObjectMap<Player, Long> teamTimers = new ObjectMap<>();
 
-    private Team forceTeam = null;
-    private Team spectateTeam = Team.all[6];
+    private Team spectateTeam = Team.all[8];
     private ObjectMap<Player, Team> rememberSpectate = new ObjectMap<>();
 
     //register event handlers and create variables in the constructor
@@ -41,46 +32,11 @@ public class TeamPlugin extends Plugin {
             if(rememberSpectate.containsKey(event.player)){
                 rememberSpectate.remove(event.player);
             }
-        });
-
-        /*
-        for(Team t: Team.baseTeams){
-            teamMap.put(t.toString(), t);
-        }
-        teamMap.put("off", null);
-
-        Events.on(PlayerJoin.class, event -> {
-            if (Vars.state.rules.pvp) {
-                timers.put(event.player, System.currentTimeMillis());
-                if(forceTeam == null){
-                    event.player.sendMessage("You have 3 minutes if you want to change teams.");
-                }else{
-                    event.player.team(forceTeam);
-                    //event.player.spawner = event.player.lastSpawner = null;
-                    //event.player.unit().kill();
-                    Call.unitDeath(event.player.unit().id);
-                    //Call.OnPlayerDeath(event.player);
-                    event.player.sendMessage("[sky]ForceTeam[] is activated");
-                    //Call.sendMessage(event.player.name + "[sky] changed teams.");
-                }
+            if(teamTimers.containsKey(event.player)){
+                teamTimers.remove(event.player);
             }
         });
 
-        Events.on(GameOverEvent.class, event -> {
-            if(this.forceTeam != null){
-                this.forceTeam = null;
-                Call.sendMessage("[accent]All players are allowed to change teams.");
-            }
-            if(Vars.state.rules.pvp){
-                Call.sendMessage("You have 1 minute if you want to change teams.");
-                for(Player p: timers.keys()){
-                    timers.put(p, System.currentTimeMillis());
-                }
-            }
-        });
-
-
-        */
     }
 
     //register commands that run on the server
@@ -91,12 +47,16 @@ public class TeamPlugin extends Plugin {
     //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
-        handler.<Player>register("team", "cycles through all possible teams", (args, player) ->{
+        handler.<Player>register("team", "change team - cooldown", (args, player) ->{
             if(rememberSpectate.containsKey(player)){
                 player.sendMessage(">[orange] transferring back to last team");
-                player.unit().dead = false;
+                player.team(rememberSpectate.get(player));
                 Call.setPlayerTeamEditor(player, rememberSpectate.get(player));
                 rememberSpectate.remove(player);
+                return;
+            }
+            if(System.currentTimeMillis() < teamTimers.get(player,0L)){
+                player.sendMessage(">[orange] command is on a 5 second cooldown...");
                 return;
             }
             Team newTeam = getPosTeam(player);
@@ -108,6 +68,9 @@ public class TeamPlugin extends Plugin {
                 Call.setPosition(player.con, ret.x, ret.y);
                 player.unit().set(ret.x, ret.y);
                 player.snapSync();
+
+                teamTimers.put(player, System.currentTimeMillis()+TEAM_CD);
+                Call.sendChatMessage(String.format("> %s []changed to team [sky]%s", player.name, newTeam));
             }else{
                 player.sendMessage("[scarlet]You can't change teams ...");
             }
@@ -119,15 +82,17 @@ public class TeamPlugin extends Plugin {
                return;
             }
             if(rememberSpectate.containsKey(player)){
-                player.unit().dead = false;
+                player.team(rememberSpectate.get(player));
                 Call.setPlayerTeamEditor(player, rememberSpectate.get(player));
                 rememberSpectate.remove(player);
                 player.sendMessage("[gold]PLAYER MODE[]");
             }else{
-                rememberSpectate.put(player, player.team());
+                rememberSpectate.put(player, player.unit().team);
+                player.team(spectateTeam);
                 Call.setPlayerTeamEditor(player, spectateTeam);
-                Call.unitDeath(player.id);
+                player.unit().kill();
                 player.sendMessage("[green]SPECTATE MODE[]");
+                player.sendMessage("use /team or /spectate to go back to player mode");
             }
         });
         /*
@@ -180,43 +145,8 @@ public class TeamPlugin extends Plugin {
             }
         });
 
-        handler.<Player>register("forceteam", "<team> [change:1]", "[scarlet]Admin only[] force new players to join <team>. 'off' to disable", (args, player) -> {
-            if(!Vars.state.rules.pvp) return;
-            if(!player.admin()){
-                player.sendMessage("[scarlet]This command is only for admins!");
-                return;
-            }
-            if(!teamMap.containsKey(args[0])) {
-                player.sendMessage("[scarlet]Invalid team!");
-                return;
-            }else if(args[0].equals("off")){
-                Log.info("forceTeam: off");
-            }else if(teamMap.get(args[0]).cores().size < 1){
-                player.sendMessage("[scarlet]This team has no cores!");
-                return;
-            }
-            this.forceTeam = teamMap.get(args[0]);
-            if(this.forceTeam != null) {
-                Log.info("forceTeam: " + args[0]);
-                Call.sendMessage("All [accent]new players[] will join team: [sky]" + args[0]);
-            }else{
-                Call.sendMessage("All [accent]new players[] will join [sky]a random[] team.");
-            }
-
-            if(this.forceTeam != null && args.length > 1){
-                if(args[1].equals("1")){
-                    Call.sendMessage("All players will change team immediately...");
-                    for(Player p: Groups.player){
-                        if(p != player){
-                            p.team(this.forceTeam);
-                            Call.unitDeath(p.unit().id);
-                        }
-                    }
-                }
-            }
-        });
-
          */
+        /*
         if(DEBUG){
             handler.<Player>register("loc", "change team", (args, player) -> {
                 StringBuilder sb = new StringBuilder();
@@ -250,7 +180,7 @@ public class TeamPlugin extends Plugin {
                 player.unit().set(t.drawx(), t.drawy());
                 player.snapSync();
             });
-        }
+        }*/
     }
     //search a possible team
     private Team getPosTeam(Player p){
