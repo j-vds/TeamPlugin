@@ -3,7 +3,6 @@ package team;
 import arc.*;
 import arc.struct.ObjectMap;
 import arc.util.*;
-import mindustry.*;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
@@ -11,15 +10,11 @@ import mindustry.mod.Plugin;
 import mindustry.world.Tile;
 
 // use java.util for now
-import java.text.MessageFormat;
 import java.util.Arrays;
-
-import static mindustry.Vars.tilesize;
-
 
 public class TeamPlugin extends Plugin {
     //private boolean DEBUG = false;
-    private long TEAM_CD = 5L;
+    private long TEAM_CD = 5000L;
 
     private ObjectMap<Player, Long> teamTimers = new ObjectMap<>();
 
@@ -59,18 +54,16 @@ public class TeamPlugin extends Plugin {
                 player.sendMessage(">[orange] command is on a 5 second cooldown...");
                 return;
             }
-            Team newTeam = getPosTeam(player);
             coreTeamReturn ret = getPosTeamLoc(player);
             if(ret != null) {
-                Call.setPlayerTeamEditor(player, newTeam);
-                player.team(newTeam);
+                Call.setPlayerTeamEditor(player, ret.team);
+                player.team(ret.team);
                 //maybe not needed
                 Call.setPosition(player.con, ret.x, ret.y);
                 player.unit().set(ret.x, ret.y);
                 player.snapSync();
-
                 teamTimers.put(player, System.currentTimeMillis()+TEAM_CD);
-                Call.sendChatMessage(String.format("> %s []changed to team [sky]%s", player.name, newTeam));
+                Call.sendMessage(String.format("> %s []changed to team [sky]%s", player.name, ret.team));
             }else{
                 player.sendMessage("[scarlet]You can't change teams ...");
             }
@@ -122,10 +115,10 @@ public class TeamPlugin extends Plugin {
     }
 
     class coreTeamReturn{
-        Team t;
+        Team team;
         float x,y;
         public coreTeamReturn(Team _t, float _x, float _y){
-            t = _t;
+            team = _t;
             x = _x;
             y = _y;
         }
