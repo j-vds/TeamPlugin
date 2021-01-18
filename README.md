@@ -6,7 +6,7 @@
 * `/spectate` Enter/leave spectate mode.
 
 ### Previous version v5
-The command `/forceteam`is implemented in a new [plugin](https://github.com/J-VdS/TeamPlugin). Both plugins are compatible. <br/>
+The command `/forceteam`is implemented in a new [plugin](https://github.com/J-VdS/ForceTeamPlugin). Both plugins are compatible. <br/>
 * ~~`/forceteam [team/off]` New players will be assigned to this team (resets after a game over)~~ 
 
 
