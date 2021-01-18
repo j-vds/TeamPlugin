@@ -3,6 +3,7 @@ package team;
 import arc.*;
 import arc.struct.ObjectMap;
 import arc.util.*;
+import mindustry.Vars;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
@@ -50,6 +51,11 @@ public class TeamPlugin extends Plugin {
                 rememberSpectate.remove(player);
                 return;
             }
+            if(Vars.state.rules.tags.getBool("forceTeam") && !player.admin()){
+                player.sendMessage("You can't change teams. An admin activated forceTeam!");
+                return;
+            }
+
             if(System.currentTimeMillis() < teamTimers.get(player,0L)){
                 player.sendMessage(">[orange] command is on a 5 second cooldown...");
                 return;
