@@ -65,7 +65,7 @@ public class TeamPlugin extends Plugin {
                 Call.setPlayerTeamEditor(player, ret.team);
                 player.team(ret.team);
                 //maybe not needed
-                //Call.setPosition(player.con, ret.x, ret.y);
+                Call.setPosition(player.con, ret.x, ret.y);
                 player.unit().set(ret.x, ret.y);
                 player.snapSync();
                 teamTimers.put(player, System.currentTimeMillis()+TEAM_CD);
