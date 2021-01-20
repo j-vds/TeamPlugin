@@ -4,6 +4,7 @@ import arc.*;
 import arc.struct.ObjectMap;
 import arc.util.*;
 import mindustry.Vars;
+import mindustry.content.UnitTypes;
 import mindustry.game.EventType.*;
 import mindustry.game.Team;
 import mindustry.gen.*;
@@ -15,7 +16,8 @@ import java.util.Arrays;
 
 public class TeamPlugin extends Plugin {
     //private boolean DEBUG = false;
-    private long TEAM_CD = 5000L;
+    private long TEAM2_CD = 30000L;
+    private long TEAM_CD = 10000L;
 
     private ObjectMap<Player, Long> teamTimers = new ObjectMap<>();
 
@@ -43,12 +45,25 @@ public class TeamPlugin extends Plugin {
     //register commands that player can invoke in-game
     @Override
     public void registerClientCommands(CommandHandler handler){
+        handler.<Player>register("ut","unit type", (args, player) ->{
+           player.sendMessage(player.unit().type().name);
+        });
+
         handler.<Player>register("team", "change team - cooldown", (args, player) ->{
+            if(player.unit().type != UnitTypes.alpha && player.unit().type != UnitTypes.beta && player.unit().type != UnitTypes.gamma){
+                player.sendMessage("\n> [orange] Go back to [sky]player mode[] before switching teams!\n");
+                return;
+            }
             if(rememberSpectate.containsKey(player)){
                 player.sendMessage(">[orange] transferring back to last team");
                 player.team(rememberSpectate.get(player));
                 Call.setPlayerTeamEditor(player, rememberSpectate.get(player));
                 rememberSpectate.remove(player);
+                return;
+            }
+
+            if(!Vars.state.rules.pvp && !Vars.state.rules.infiniteResources){
+                player.sendMessage("[orange] only usefull in PVP");
                 return;
             }
             if(Vars.state.rules.tags.getBool("forceTeam") && !player.admin()){
@@ -57,9 +72,10 @@ public class TeamPlugin extends Plugin {
             }
 
             if(System.currentTimeMillis() < teamTimers.get(player,0L)){
-                player.sendMessage(">[orange] command is on a 5 second cooldown...");
+                player.sendMessage(">[orange] command is on a 10 second cooldown...");
                 return;
             }
+
             coreTeamReturn ret = getPosTeamLoc(player);
             if(ret != null) {
                 Call.setPlayerTeamEditor(player, ret.team);
