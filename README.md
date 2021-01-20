@@ -1,6 +1,6 @@
 # TeamPlugin
 ### Commands
-* `/team ` This command lets players change teams. It cycles through a list of possible teams and teleports the players to on of their cores. *This command has a 5 second cooldown.*
+* `/team ` This command lets players change teams. It cycles through a list of possible teams and teleports the players to on of their cores. *This command has a 10 second cooldown.*
 
 ### Admin Only commands
 * `/spectate` Enter/leave spectate mode.
