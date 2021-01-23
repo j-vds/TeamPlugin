@@ -49,7 +49,7 @@ public class TeamPlugin extends Plugin {
            player.sendMessage(player.unit().type().name);
         });
 
-        handler.<Player>register("team", "change team - cooldown", (args, player) ->{
+        handler.<Player>register("team", "[teamname]","change team - cooldown", (args, player) ->{
             if(player.unit().type != UnitTypes.alpha && player.unit().type != UnitTypes.beta && player.unit().type != UnitTypes.gamma){
                 player.sendMessage("\n> [orange] Go back to [sky]player mode[] before switching teams!\n");
                 return;
@@ -75,8 +75,49 @@ public class TeamPlugin extends Plugin {
                 player.sendMessage(">[orange] command is on a 10 second cooldown...");
                 return;
             }
+            coreTeamReturn ret = null;
+            if(args.length == 1){
+                Team retTeam;
+                switch (args[0]) {
+                    case "sharded":
+                        retTeam = Team.sharded;
+                        break;
+                    case "blue":
+                        retTeam = Team.blue;
+                        break;
+                    case "crux":
+                        retTeam = Team.crux;
+                        break;
+                    case "derelict":
+                        retTeam = Team.derelict;
+                        break;
+                    case "green":
+                        retTeam = Team.green;
+                        break;
+                    case "purple":
+                        retTeam = Team.purple;
+                        break;
+                    default:
+                        player.sendMessage("[scarlet]ABORT: Team not found[] - available teams:");
+                        for (int i = 0; i < 6; i++) {
+                            if (!Team.baseTeams[i].cores().isEmpty()) {
+                                player.sendMessage(Team.baseTeams[i].name);
+                            }
+                        }
+                        return;
+                }
+                if(retTeam.cores().isEmpty()){
+                    player.sendMessage("This team has no core - can't change!");
+                    return;
+                }else{
+                    Tile coreTile = retTeam.core().tileOn();
+                    ret =  new coreTeamReturn(retTeam, coreTile.drawx(), coreTile.drawy());
+                }
+            }else{
+                ret = getPosTeamLoc(player);
+            }
 
-            coreTeamReturn ret = getPosTeamLoc(player);
+            //move team mechanic
             if(ret != null) {
                 Call.setPlayerTeamEditor(player, ret.team);
                 player.team(ret.team);
