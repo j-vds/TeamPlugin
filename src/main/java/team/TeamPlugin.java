@@ -66,8 +66,9 @@ public class TeamPlugin extends Plugin {
                 player.sendMessage("[orange] only usefull in PVP");
                 return;
             }
-            if(Vars.state.rules.tags.getBool("forceTeam") && !player.admin()){
+            if(Vars.state.rules.tags.getBool("forceteam") && !player.admin()){
                 player.sendMessage("You can't change teams. An admin activated forceTeam!");
+                Log.info("<TeamPlugin> @ can't change team - forceteam", Strings.stripColors(player.name));
                 return;
             }
 
