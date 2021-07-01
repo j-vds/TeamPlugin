@@ -1,7 +1,9 @@
 package team;
 
 import arc.*;
+import arc.struct.ObjectIntMap;
 import arc.struct.ObjectMap;
+import arc.struct.Seq;
 import arc.util.*;
 import mindustry.Vars;
 import mindustry.content.UnitTypes;
@@ -12,26 +14,54 @@ import mindustry.mod.Plugin;
 import mindustry.world.Tile;
 
 // use java.util for now
-import java.util.Arrays;
+//import java.util.Arrays;
+
+// constants
+import static team.constants.*;
 
 public class TeamPlugin extends Plugin {
-    //private boolean DEBUG = false;
-    private long TEAM2_CD = 30000L;
-    private long TEAM_CD = 10000L;
-
     private ObjectMap<Player, Long> teamTimers = new ObjectMap<>();
-
-    private Team spectateTeam = Team.all[8];
     private ObjectMap<Player, Team> rememberSpectate = new ObjectMap<>();
+    private ObjectIntMap<Team> teamCounters = new ObjectIntMap<>();
 
     //register event handlers and create variables in the constructor
     public TeamPlugin(){
         Events.on(PlayerLeave.class, event -> {
+            //update teamCounters
+            if(event.player.team() != null && event.player.team() != spectateTeam) {
+                teamCounters.put(event.player.team(), teamCounters.get(event.player.team(), 0) - 1);
+            }
+
             if(rememberSpectate.containsKey(event.player)){
                 rememberSpectate.remove(event.player);
             }
             if(teamTimers.containsKey(event.player)){
                 teamTimers.remove(event.player);
+            }
+        });
+
+        Events.on(PlayerJoin.class, event -> {
+           teamCounters.put(event.player.team(), teamCounters.get(event.player.team(), 0)+1);
+        });
+
+        Events.on(WorldLoadEvent.class, event -> {
+            if(!Vars.state.rules.pvp) return;
+            //get all available teams
+            teamCounters.clear();
+            for(Team t: Team.baseTeams){
+                if(!t.cores().isEmpty()){
+                    teamCounters.put(t,0);
+                }
+            }
+
+            Seq<Player> copyOfPlayers = Groups.player.copy(new Seq<Player>());
+            Team playerTeam;
+            Player p;
+            for(int index = 0; index<copyOfPlayers.size; index++){
+                p = copyOfPlayers.get(index);
+                if(p == null) continue;
+                playerTeam = p.team();
+                teamCounters.put(playerTeam, teamCounters.get(playerTeam)+1);
             }
         });
 
@@ -107,8 +137,11 @@ public class TeamPlugin extends Plugin {
                         }
                         return;
                 }
-                if(retTeam.cores().isEmpty()){
+                if(retTeam.cores().isEmpty()) {
                     player.sendMessage("This team has no core - can't change!");
+                    return;
+                }else if(teamCounters.get(retTeam) - maxDiff < teamCounters.get(player.team())){
+                    player.sendMessage(String.format("[orange]<team>[white] You can't change to this team (max difference %d)[]", maxDiff));
                     return;
                 }else{
                     Tile coreTile = retTeam.core().tileOn();
@@ -116,12 +149,15 @@ public class TeamPlugin extends Plugin {
                 }
             }else{
                 ret = getPosTeamLoc(player);
+
             }
 
             //move team mechanic
             if(ret != null) {
+                teamCounters.put(player.team(), teamCounters.get(player.team())-1);
                 Call.setPlayerTeamEditor(player, ret.team);
                 player.team(ret.team);
+                teamCounters.put(ret.team, teamCounters.get(ret.team)+1);
                 //maybe not needed
                 Call.setPosition(player.con, ret.x, ret.y);
                 player.unit().set(ret.x, ret.y);
@@ -156,13 +192,15 @@ public class TeamPlugin extends Plugin {
     //search a possible team
     private Team getPosTeam(Player p){
         Team currentTeam = p.team();
-        int c_index = Arrays.asList(Team.baseTeams).indexOf(currentTeam);
-        int i = (c_index+1)%6;
+        Seq<Team> posTeams = teamCounters.keys().toArray();
+
+        int c_index = posTeams.indexOf(currentTeam);//Arrays.asList(Team.baseTeams).indexOf(currentTeam);
+        int i = (c_index+1)%posTeams.size;
         while (i != c_index){
-            if (Team.baseTeams[i].cores().size > 0){
+            if (teamCounters.get(posTeams.get(i)) - maxDiff < teamCounters.get(currentTeam)){
                 return Team.baseTeams[i];
             }
-            i = (i + 1) % Team.baseTeams.length;
+            i = (i + 1) % teamCounters.size;
         }
         return currentTeam;
     }
